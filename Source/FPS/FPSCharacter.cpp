@@ -2,6 +2,7 @@
 
 #include "FPSCharacter.h"
 #include "FPS.h"
+#include "FPSProjectile.h"
 #include "Components/InputComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -62,6 +63,7 @@ void AFPSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AFPSCharacter::StartJump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AFPSCharacter::StopJump);
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AFPSCharacter::Fire);
 }
 
 void AFPSCharacter::MoveForwardBackward(float Value)
@@ -84,4 +86,33 @@ void AFPSCharacter::StartJump()
 void AFPSCharacter::StopJump()
 {
 	bPressedJump = false;
+}
+
+void AFPSCharacter::Fire()
+{
+	// Attempt to fire a projectile.
+	if (ProjectileClass) {
+		// Get the camera transform.
+		FVector CameraLocation;
+		FRotator CameraRotation;
+		GetActorEyesViewPoint(CameraLocation, CameraRotation);
+
+		FVector MuzzleLocation = CameraLocation + FTransform(CameraRotation).TransformVector(MuzzleOffset);
+		FRotator MuzzleRotation = CameraRotation;
+
+		MuzzleRotation.Pitch += 10.0f;
+		UWorld* World = GetWorld();
+		if (World) {
+			FActorSpawnParameters SpawnParameters;
+			SpawnParameters.Owner = this;
+			SpawnParameters.Instigator = Instigator;
+			// spawn the projectile's at the muzzle.
+			AFPSProjectile* Projectile = World->SpawnActor<AFPSProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParameters);
+			if (Projectile) {
+				// Set the projectile's initial trajectory.
+				FVector LaunchDirection = MuzzleRotation.Vector();
+				Projectile->FireInDirection(LaunchDirection);
+			}
+		}
+	}
 }
